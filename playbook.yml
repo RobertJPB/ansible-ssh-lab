@@ -1,0 +1,55 @@
+---
+- name: Automatizar tareas en los 5 servidores Ubuntu
+  hosts: servidores
+  become: true
+
+  vars:
+    usuario: itla
+    carpeta_app: /home/itla/app
+    paquetes:
+      - cowsay
+      - htop
+
+  tasks:
+    - name: Actualizar la caché de APT
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Crear el usuario {{ usuario }}
+      ansible.builtin.user:
+        name: "{{ usuario }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Crear la carpeta app
+      ansible.builtin.file:
+        path: "{{ carpeta_app }}"
+        state: directory
+        owner: "{{ usuario }}"
+        group: "{{ usuario }}"
+        mode: "0755"
+
+    - name: Crear el archivo hola.txt dentro de app
+      ansible.builtin.copy:
+        dest: "{{ carpeta_app }}/hola.txt"
+        owner: "{{ usuario }}"
+        group: "{{ usuario }}"
+        mode: "0644"
+        content: |
+          Hola desde {{ inventory_hostname }} ({{ ip_docker }})
+          Archivo creado automáticamente con Ansible - ITLA
+
+    - name: Instalar cowsay y htop
+      ansible.builtin.apt:
+        name: "{{ paquetes }}"
+        state: present
+
+    - name: Probar cowsay
+      ansible.builtin.command: /usr/games/cowsay "Hola desde {{ inventory_hostname }}"
+      register: salida_cowsay
+      changed_when: false
+
+    - name: Mostrar resultado de cowsay
+      ansible.builtin.debug:
+        msg: "{{ salida_cowsay.stdout_lines }}"
